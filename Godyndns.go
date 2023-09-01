@@ -34,6 +34,10 @@ func CreateClient(setting *settings.Settings) (Client, error) {
 func Update(c Client) error {
 	ip, err := getIP()
 	if err != nil {
+		go func(c Client) {
+			time.Sleep(time.Minute * 5)
+			Update(c)
+		}(c)
 		return err
 	}
 

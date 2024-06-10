@@ -11,6 +11,7 @@ type Settings struct {
 	Domain      string `json:"domain"`
 	Subdomain   string `json:"subdomain"`
 	Token       string `json:"token"`
+	ApiKey      string `json:"apikey"`
 	StartServer bool   `json:"httpServer"`
 	Port        string `json:"httpPort"`
 }

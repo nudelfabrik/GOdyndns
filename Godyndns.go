@@ -11,6 +11,7 @@ import (
 
 	"github.com/nudelfabrik/GOdyndns/Digitalocean"
 	"github.com/nudelfabrik/GOdyndns/Gandi"
+	"github.com/nudelfabrik/GOdyndns/Porkbun"
 	"github.com/nudelfabrik/GOdyndns/settings"
 )
 
@@ -25,6 +26,8 @@ func CreateClient(setting *settings.Settings) (Client, error) {
 		return Gandi.NewGandiClient(setting)
 	case "DO", "do", "DigitalOcean", "digitalocean":
 		return Digitalocean.NewDoClient(setting)
+	case "Porkbun", "porkbun", "PorkBun":
+		return Porkbun.NewPorkbunClient(setting)
 	default:
 		return nil, fmt.Errorf("Not supported API endpoint: %s", setting.API)
 	}

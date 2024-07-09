@@ -19,13 +19,25 @@ type PorkbunClient struct {
 	lastIP    string
 	token     string
 	apikey    string
+    domainid  string
 }
 
 type record struct {
 	SecretAPI string `json:"secretapikey"`
 	APIKey    string `json:"apikey"`
 	TTL       string `json:"ttl"`
+	Type      string `json:"type"`
+	Name      string `json:"name"`
 	Content   string `json:"content"`
+}
+
+type answer struct {
+    Records []rec `json:"records"`
+
+}
+type rec struct {
+    ID string `json:"id"`
+
 }
 
 func NewPorkbunClient(setting *settings.Settings) (*PorkbunClient, error) {
@@ -37,7 +49,35 @@ func NewPorkbunClient(setting *settings.Settings) (*PorkbunClient, error) {
 	client.subdomain = setting.Subdomain
 	setting.Token = ""
 
+    // get id
+    client.getDomainID()
+
 	return client, nil
+}
+
+func (c *PorkbunClient) getDomainID() error {
+	request := record{}
+	request.APIKey = c.apikey
+	request.SecretAPI = c.token
+
+	data, err := json.Marshal(request)
+
+    req, err := http.NewRequest("POST", "https://api.porkbun.com/api/json/v3/dns/retrieveByNameType/"+c.domain+"/A/"+c.subdomain, bytes.NewBuffer(data))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+    target := answer{}
+    err = json.NewDecoder(resp.Body).Decode(&target)
+	if err != nil {
+		return err
+	}
+    if len(target.Records) == 0 {
+        return nil
+    }
+    c.domainid = target.Records[0].ID
+    return nil
 }
 
 func (c *PorkbunClient) Update(ip string) error {
@@ -51,19 +91,27 @@ func (c *PorkbunClient) Update(ip string) error {
 	request.APIKey = c.apikey
 	request.SecretAPI = c.token
 	request.TTL = "1800"
+	request.Type = "A"
+	request.Name = c.subdomain
 	request.Content = ip
 
 	data, err := json.Marshal(request)
 
-    req, err := http.NewRequest("POST", "https://porkbun.com/api/json/v3/dns/editByNameType/"+c.domain+"/A/"+c.subdomain, bytes.NewBuffer(data))
+	client := &http.Client{}
+
+    req, err := http.NewRequest("POST", "https://api.porkbun.com/api/json/v3/dns/delete/"+c.domain+ "/" + c.domainid, bytes.NewBuffer(data))
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+    req, err = http.NewRequest("POST", "https://porkbun.com/api/json/v3/dns/create/" + c.domain, bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
 	req.Header.Add("Content-Type", "application/json")
 
-	client := &http.Client{}
-
-	resp, err := client.Do(req)
+	resp, err = client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -72,6 +120,7 @@ func (c *PorkbunClient) Update(ip string) error {
         fmt.Println(string(respDump))
 		return errors.New(resp.Status)
 	}
+    c.getDomainID()
 
 	fmt.Println(time.Now().Format(time.RFC1123), " Changed IP: ", ip)
 	return nil
